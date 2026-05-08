@@ -765,10 +765,10 @@ function renderLCIAOutlierTab() {
       <div>
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-gray-800">Enter GaBi LCIA Results</h3>
-          ${hasAny ? (flagged > 0
+          <span id="lcia-flag-summary">${hasAny ? (flagged > 0
             ? `<span class="bg-red-100 text-red-700 border border-red-200 rounded-lg px-3 py-1 text-xs font-medium">${flagged} Outside Range</span>`
             : `<span class="bg-green-100 text-green-700 border border-green-200 rounded-lg px-3 py-1 text-xs font-medium">All Within Range</span>`)
-            : ''}
+            : ''}</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           ${LCIA_REFERENCE.map(r => {
@@ -777,16 +777,16 @@ function renderLCIAOutlierTab() {
             const inRange = parsed !== null && !isNaN(parsed) ? (parsed >= r.lower && parsed <= r.upper) : null;
             const zScore = parsed !== null && !isNaN(parsed) ? ((parsed - r.mean) / r.stdDev).toFixed(2) : null;
             return `
-              <div class="border rounded-xl p-4 ${inRange === false ? 'border-red-300 bg-red-50' : inRange === true ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}">
+              <div id="lcia-card-${r.id}" class="border rounded-xl p-4 ${inRange === false ? 'border-red-300 bg-red-50' : inRange === true ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}">
                 <label class="block text-sm font-medium text-gray-800 mb-0.5">${r.indicator}</label>
                 <p class="text-xs text-gray-500 mb-2">${r.unit}</p>
-                <input type="number" step="any" id="lcia-val-${r.id}"
-                  placeholder="Enter GaBi result…"
+                <input type="text" inputmode="decimal" id="lcia-val-${r.id}"
+                  placeholder="e.g. 1.3706"
                   value="${val !== undefined ? val : ''}"
                   class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white
                     ${inRange === false ? 'border-red-300' : inRange === true ? 'border-green-300' : 'border-gray-300'}"
-                  oninput="state.gabiLciaValues['${r.id}'] = this.value; refreshLCIATab()">
-                <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                  oninput="refreshLCIATab(this, '${r.id}')">
+                <div id="lcia-meta-${r.id}" class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                   <span class="text-gray-400">Range: <span class="text-blue-600 font-medium">${r.lower} – ${r.upper}</span></span>
                   <span class="text-gray-400">Mean: <span class="font-medium">${r.mean}</span></span>
                   ${zScore !== null ? `<span class="${inRange === false ? 'text-red-600 font-semibold' : 'text-gray-500'}">Z: ${zScore}</span>` : ''}
@@ -799,34 +799,32 @@ function renderLCIAOutlierTab() {
       </div>
 
       <!-- Full results table (if any values entered) -->
-      ${hasAny ? `
-        <div>
-          <h3 class="text-sm font-semibold text-gray-800 mb-3">Full Comparison Table</h3>
-          <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="w-full text-xs">
-              <thead class="bg-gray-50">
-                <tr>${['LCIA Indicator','Unit','Your Value','Mean','Std Dev','Lower','Upper','Z-Score','Status','Notes']
-                  .map(h => `<th class="px-3 py-2.5 text-left font-semibold text-gray-600 whitespace-nowrap">${h}</th>`).join('')}</tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                ${results.map(r => `
-                  <tr class="${r.status === 'Outside range' ? 'bg-red-50' : r.modelValue === null ? 'opacity-40' : 'hover:bg-gray-50'}">
-                    <td class="px-3 py-2 font-medium text-gray-900">${r.indicator}</td>
-                    <td class="px-3 py-2 text-gray-500">${r.unit}</td>
-                    <td class="px-3 py-2 font-mono font-semibold ${r.modelValue === null ? 'text-gray-400 italic' : r.status === 'Outside range' ? 'text-red-700' : 'text-gray-900'}">
-                      ${r.modelValue !== null ? fmtSci(r.modelValue) : 'PENDING'}</td>
-                    <td class="px-3 py-2 font-mono text-gray-700">${r.mean}</td>
-                    <td class="px-3 py-2 font-mono text-gray-600">${r.stdDev}</td>
-                    <td class="px-3 py-2 font-mono text-blue-700">${r.lower}</td>
-                    <td class="px-3 py-2 font-mono text-blue-700">${r.upper}</td>
-                    <td class="px-3 py-2 font-mono ${r.zScore !== null && Math.abs(r.zScore) > 2 ? 'text-red-600 font-semibold' : 'text-gray-700'}">${r.zScore !== null ? r.zScore.toFixed(3) : '—'}</td>
-                    <td class="px-3 py-2">${r.status ? statusBadge(r.status) : '—'}</td>
-                    <td class="px-3 py-2 text-gray-500 max-w-xs">${r.notes}</td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>` : ''}
+      <div id="lcia-comparison-section">${hasAny ? `
+        <h3 class="text-sm font-semibold text-gray-800 mb-3">Full Comparison Table</h3>
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50">
+              <tr>${['LCIA Indicator','Unit','Your Value','Mean','Std Dev','Lower','Upper','Z-Score','Status','Notes']
+                .map(h => `<th class="px-3 py-2.5 text-left font-semibold text-gray-600 whitespace-nowrap">${h}</th>`).join('')}</tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              ${results.map(r => `
+                <tr class="${r.status === 'Outside range' ? 'bg-red-50' : r.modelValue === null ? 'opacity-40' : 'hover:bg-gray-50'}">
+                  <td class="px-3 py-2 font-medium text-gray-900">${r.indicator}</td>
+                  <td class="px-3 py-2 text-gray-500">${r.unit}</td>
+                  <td class="px-3 py-2 font-mono font-semibold ${r.modelValue === null ? 'text-gray-400 italic' : r.status === 'Outside range' ? 'text-red-700' : 'text-gray-900'}">
+                    ${r.modelValue !== null ? fmtSci(r.modelValue) : 'PENDING'}</td>
+                  <td class="px-3 py-2 font-mono text-gray-700">${r.mean}</td>
+                  <td class="px-3 py-2 font-mono text-gray-600">${r.stdDev}</td>
+                  <td class="px-3 py-2 font-mono text-blue-700">${r.lower}</td>
+                  <td class="px-3 py-2 font-mono text-blue-700">${r.upper}</td>
+                  <td class="px-3 py-2 font-mono ${r.zScore !== null && Math.abs(r.zScore) > 2 ? 'text-red-600 font-semibold' : 'text-gray-700'}">${r.zScore !== null ? r.zScore.toFixed(3) : '—'}</td>
+                  <td class="px-3 py-2">${r.status ? statusBadge(r.status) : '—'}</td>
+                  <td class="px-3 py-2 text-gray-500 max-w-xs">${r.notes}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : ''}</div>
 
       <!-- Raw reference by program -->
       <div>
@@ -856,17 +854,73 @@ function renderLCIAOutlierTab() {
     </div>`;
 }
 
-// Called on every keypress in LCIA inputs to re-render the tab live
-function refreshLCIATab() {
-  // Collect all current values before re-rendering
+// Called on every keystroke — surgically updates results without touching inputs
+function refreshLCIATab(inputEl, id) {
+  if (inputEl) state.gabiLciaValues[id] = inputEl.value;
+
+  const results = computeLCIAComparison(state.gabiLciaValues);
+  const hasAny = results.some(r => r.modelValue !== null);
+  const flagged = results.filter(r => r.status === 'Outside range').length;
+
+  // Update each card's border, input border, and meta display
   LCIA_REFERENCE.forEach(r => {
-    const el = document.getElementById(`lcia-val-${r.id}`);
-    if (el) state.gabiLciaValues[r.id] = el.value;
+    const val = state.gabiLciaValues[r.id];
+    const parsed = (val !== undefined && val !== '') ? parseFloat(val) : null;
+    const inRange = (parsed !== null && !isNaN(parsed)) ? (parsed >= r.lower && parsed <= r.upper) : null;
+    const zScore = (parsed !== null && !isNaN(parsed)) ? ((parsed - r.mean) / r.stdDev).toFixed(2) : null;
+
+    const card = document.getElementById(`lcia-card-${r.id}`);
+    if (card) card.className = `border rounded-xl p-4 ${inRange === false ? 'border-red-300 bg-red-50' : inRange === true ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}`;
+
+    const inp = document.getElementById(`lcia-val-${r.id}`);
+    if (inp) {
+      inp.className = inp.className.replace(/border-(red|green|gray)-\d+/g, '').trim()
+        + ` ${inRange === false ? 'border-red-300' : inRange === true ? 'border-green-300' : 'border-gray-300'}`;
+    }
+
+    const meta = document.getElementById(`lcia-meta-${r.id}`);
+    if (meta) meta.innerHTML = `
+      <span class="text-gray-400">Range: <span class="text-blue-600 font-medium">${r.lower} – ${r.upper}</span></span>
+      <span class="text-gray-400">Mean: <span class="font-medium">${r.mean}</span></span>
+      ${zScore !== null ? `<span class="${inRange === false ? 'text-red-600 font-semibold' : 'text-gray-500'}">Z: ${zScore}</span>` : ''}
+      ${inRange === true ? `<span class="text-green-600 font-medium">✓ Within range</span>` : ''}
+      ${inRange === false ? `<span class="text-red-600 font-medium">⚠ Outside range</span>` : ''}`;
   });
-  const content = document.getElementById('gabi-tab-content');
-  if (content && state.activeGabiTab === 'lcia') {
-    content.innerHTML = renderLCIAOutlierTab();
-  }
+
+  // Update flag summary badge
+  const flagEl = document.getElementById('lcia-flag-summary');
+  if (flagEl) flagEl.innerHTML = hasAny ? (flagged > 0
+    ? `<span class="bg-red-100 text-red-700 border border-red-200 rounded-lg px-3 py-1 text-xs font-medium">${flagged} Outside Range</span>`
+    : `<span class="bg-green-100 text-green-700 border border-green-200 rounded-lg px-3 py-1 text-xs font-medium">All Within Range</span>`) : '';
+
+  // Update comparison table
+  const compEl = document.getElementById('lcia-comparison-section');
+  if (compEl) compEl.innerHTML = hasAny ? `
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Full Comparison Table</h3>
+    <div class="overflow-x-auto rounded-lg border border-gray-200">
+      <table class="w-full text-xs">
+        <thead class="bg-gray-50">
+          <tr>${['LCIA Indicator','Unit','Your Value','Mean','Std Dev','Lower','Upper','Z-Score','Status','Notes']
+            .map(h => `<th class="px-3 py-2.5 text-left font-semibold text-gray-600 whitespace-nowrap">${h}</th>`).join('')}</tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          ${results.map(r => `
+            <tr class="${r.status === 'Outside range' ? 'bg-red-50' : r.modelValue === null ? 'opacity-40' : 'hover:bg-gray-50'}">
+              <td class="px-3 py-2 font-medium text-gray-900">${r.indicator}</td>
+              <td class="px-3 py-2 text-gray-500">${r.unit}</td>
+              <td class="px-3 py-2 font-mono font-semibold ${r.modelValue === null ? 'text-gray-400 italic' : r.status === 'Outside range' ? 'text-red-700' : 'text-gray-900'}">
+                ${r.modelValue !== null ? fmtSci(r.modelValue) : 'PENDING'}</td>
+              <td class="px-3 py-2 font-mono text-gray-700">${r.mean}</td>
+              <td class="px-3 py-2 font-mono text-gray-600">${r.stdDev}</td>
+              <td class="px-3 py-2 font-mono text-blue-700">${r.lower}</td>
+              <td class="px-3 py-2 font-mono text-blue-700">${r.upper}</td>
+              <td class="px-3 py-2 font-mono ${r.zScore !== null && Math.abs(r.zScore) > 2 ? 'text-red-600 font-semibold' : 'text-gray-700'}">${r.zScore !== null ? r.zScore.toFixed(3) : '—'}</td>
+              <td class="px-3 py-2">${r.status ? statusBadge(r.status) : '—'}</td>
+              <td class="px-3 py-2 text-gray-500 max-w-xs">${r.notes}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '';
 }
 
 // ── Bootstrap ─────────────────────────────────────
